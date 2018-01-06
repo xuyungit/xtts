@@ -12,7 +12,7 @@ chapter_pattern = re.compile(r'^(第(\d+)章\s+.*)')
 text_to_convert = 'bsxcs.txt'
 baidu_oauth_url = 'https://openapi.baidu.com/oauth/2.0/token?grant_type=client_credentials&client_id=%s&client_secret=%s&'
 baidu_tsn_url = 'http://tsn.baidu.com/text2audio'
-punctuations = u'[？。，：“”！ ]'
+punctuations = u'[,;"!?…？。，：“”！ ]'
 output_folder_txt = 'contents'
 output_folder_mp3 = 'mp3'
 
@@ -71,7 +71,7 @@ def split_chapters(file_orig, output_folder, chapter_pattern):
                         cf.write('\n'.join(txt).encode('utf-8'))
                         output_files.append(file_name)
                 file_name = line + '.txt'
-                txt = []
+                txt = [line + '。']
             else:
                 txt.append(line)
     return output_files
