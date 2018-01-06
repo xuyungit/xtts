@@ -27,11 +27,11 @@ def get_token(client_id, client_secret):
         return resp['access_token']
 
 
-def text2audio(txt, token, speed, name):
+def text2audio(txt, token, speed, volume, person, name):
     txt = urllib.parse.quote_plus(urllib.parse.quote_plus(txt))
     token = urllib.parse.quote_plus(urllib.parse.quote_plus(token))
-    content = "tex=%s&lan=zh&cuid=client01&ctp=1&tok=%s&spd=%s" % (
-        txt, token, speed)
+    content = "tex=%s&lan=zh&cuid=client01&ctp=1&tok=%s&spd=%s&vol=%s&per=%s" % (
+        txt, token, speed, volume, person)
     encoded = content.encode('utf-8')
     failed_count = 0
     while failed_count < 3:
@@ -141,7 +141,8 @@ def read_chapter_files(folder, name_pattern):
 
 def convert_chapters(
         chapters, token, txt_folder, mp3_folder,
-        chapters_per_file=20, chapter_start_index=1, chapter_end_index=None):
+        chapters_per_file=20, chapter_start_index=1, chapter_end_index=None,
+        speed=5, volume=5, person=0):
     output_files = []
     if not chapter_end_index:
         chapter_end_index = 2 ** 32
@@ -158,7 +159,7 @@ def convert_chapters(
                     split_mp3_filename = os.path.join(
                         mp3_folder, '%s_%s.mp3' % (filename[:-4], i))
                     print('Converting %s' % split_mp3_filename)
-                    text2audio(split, token, 7, split_mp3_filename)
+                    text2audio(split, token, speed, volume, person, split_mp3_filename)
                     print('Converting done')
                     small_mp3s.append(split_mp3_filename)
             chapter_mp3 = os.path.join(mp3_folder, '%s.mp3' % filename[:-4])
@@ -181,6 +182,9 @@ def get_arguments():
     parser.add_argument('--end', help='end chapter index', type=int, default=None)
     parser.add_argument('--chapters', help='number of chapters per one mp3 file', type=int, default=5)
     parser.add_argument('--output', help='output mp3 folder', default='mp3')
+    parser.add_argument('--speed', help='voice speed', type=int, default=5)
+    parser.add_argument('--volume', help='voice volume', type=int, default=5)
+    parser.add_argument('--person', help='person style', type=int, choices=[0, 1, 2, 3, 4])
 
     args = parser.parse_args()
     return args
@@ -210,4 +214,5 @@ if __name__ == '__main__':
     chapters = read_chapter_files(output_folder_txt, chapter_pattern)
     convert_chapters(chapters, token, output_folder_txt,
                      args.output, chapters_per_file=args.chapters,
-                     chapter_start_index=args.start, chapter_end_index=args.end)
+                     chapter_start_index=args.start, chapter_end_index=args.end,
+                     speed=args.speed, volume=args.volume, person=args.person)
