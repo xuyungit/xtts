@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import urllib
+import argparse
 import urllib.request as req
 from urllib.parse import urlencode as urlencode
 
@@ -171,11 +172,42 @@ def convert_chapters(
         merge_chapter_mp3(output_files, mp3_folder)
 
 
+def get_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--book', help='text book to be convert', required=True)
+    parser.add_argument('--id', help='client id', required=True)
+    parser.add_argument('--secret', help='client secret', required=True)
+    parser.add_argument('--start', help='start chapter index', type=int, default=1)
+    parser.add_argument('--end', help='end chapter index', type=int, default=None)
+    parser.add_argument('--chapters', help='number of chapters per one mp3 file', type=int, default=5)
+    parser.add_argument('--output', help='output mp3 folder', default='mp3')
+
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == '__main__':
-    token = get_token('your client_id',
-                      'your client_secret')
+    args = get_arguments()
+    txt_book = args.book
+    client_id = args.id
+    client_secret = args.secret
+
+    if not os.path.isfile(txt_book):
+        print('Invalid book flie')
+        sys.exit(1)
+    try:
+        token = get_token(client_id, client_secret)
+    except urllib.error.HTTPError:
+        print("Invalid id or secret")
+        sys.exit(1)
+    if os.path.exists(args.output) and not os.path.isdir(args.output):
+        print('Invalid output folder')
+        sys.exit(1)
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
+
     split_chapters(text_to_convert, output_folder_txt, chapter_pattern)
     chapters = read_chapter_files(output_folder_txt, chapter_pattern)
     convert_chapters(chapters, token, output_folder_txt,
-                     output_folder_mp3, chapters_per_file=2,
-                     chapter_start_index=1, chapter_end_index=4)
+                     args.output, chapters_per_file=args.chapters,
+                     chapter_start_index=args.start, chapter_end_index=args.end)
