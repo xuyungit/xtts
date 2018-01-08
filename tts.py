@@ -56,9 +56,9 @@ def text2audio(txt, token, speed, volume, person, name):
         raise Exception("Failed to convert text to audio")
 
 
-def split_chapters(file_orig, output_folder, chapter_pattern):
+def split_chapters(file_orig, output_folder, chapter_pattern, encoding):
     with open(file_orig, 'rb') as f:
-        content = f.read().decode('gbk')
+        content = f.read().decode(encoding)
         contents = content.split('\n')
         txt = []
         file_name = ''
@@ -86,6 +86,7 @@ def get_prev_sp(txt, end_pos):
     return end_pos
 
 
+# txt is unicode
 def split_txt(txt, limit=1024):
     txt = txt.strip()
     txt = txt.replace('\n', '')
@@ -97,7 +98,8 @@ def split_txt(txt, limit=1024):
         candidate = txt[start_pos: end_pos]
         split = candidate.encode('utf-8')
 
-        while len(split) > limit:
+        while len(candidate.encode('gbk')) > limit:   # 尝试使用gbk的编码来计算长度
+        # while len(split) > limit:
             end_pos = get_prev_sp(txt, end_pos)
             candidate = txt[start_pos: end_pos]
             split = candidate.encode('utf-8')
@@ -185,6 +187,7 @@ def get_arguments():
     parser.add_argument('--speed', help='voice speed', type=int, default=5)
     parser.add_argument('--volume', help='voice volume', type=int, default=5)
     parser.add_argument('--person', help='person style', type=int, choices=[0, 1, 2, 3, 4])
+    parser.add_argument('--encoding', help='text encoding', default='gbk')
 
     args = parser.parse_args()
     return args
@@ -210,7 +213,9 @@ if __name__ == '__main__':
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    split_chapters(text_to_convert, output_folder_txt, chapter_pattern)
+    split_chapters(
+        args.book, output_folder_txt,
+        chapter_pattern, encoding=args.encoding)
     chapters = read_chapter_files(output_folder_txt, chapter_pattern)
     convert_chapters(chapters, token, output_folder_txt,
                      args.output, chapters_per_file=args.chapters,
