@@ -104,8 +104,8 @@ def split_txt(txt, limit=1024):
         candidate = txt[start_pos: end_pos]
         split = candidate.encode('utf-8')
 
-        while len(candidate.encode('gbk')) > limit:   # 尝试使用gbk的编码来计算长度
         # while len(split) > limit:
+        while len(candidate.encode('gbk')) > limit:   # 尝试使用gbk的编码来计算长度
             end_pos = get_prev_sp(txt, end_pos)
             candidate = txt[start_pos: end_pos]
             split = candidate.encode('utf-8')
@@ -128,9 +128,11 @@ def merge_mp3(from_files, dest_file):
     os.system(cmd)
 
 
-def merge_chapter_mp3(output_files, mp3_folder, mp3_prefix):
+def merge_chapter_mp3(output_files, mp3_folder, mp3_prefix, max_index_len=3):
+    index_format = '%0' + '%d' % max_index_len + 'd'
+    mp3_format = '%s' + index_format + '_' + index_format + '.mp3'
     dest_file = os.path.join(
-        mp3_folder, '%s%s_%s.mp3' % (
+        mp3_folder, mp3_format % (
             mp3_prefix, output_files[0][1], output_files[-1][1]))
     from_files = [item[0] for item in output_files]
     merge_mp3(from_files, dest_file)
