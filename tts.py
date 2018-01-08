@@ -8,7 +8,8 @@ import urllib.request as req
 from urllib.parse import urlencode as urlencode
 
 
-chapter_pattern = re.compile(r'^(第(\d+)章\s+.*)')
+# chapter_pattern = re.compile(r'^(第(\d+)章\s+.*)')
+chapter_pattern = re.compile(r'^((\d{3})、.*)')
 text_to_convert = 'bsxcs.txt'
 baidu_oauth_url = 'https://openapi.baidu.com/oauth/2.0/token?grant_type=client_credentials&client_id=%s&client_secret=%s&'
 baidu_tsn_url = 'http://tsn.baidu.com/text2audio'
@@ -65,7 +66,8 @@ def split_chapters(file_orig, output_folder, chapter_pattern, encoding):
         output_files = []
         for line in contents:
             line = line.strip()
-            if chapter_pattern.match(line):
+            match = chapter_pattern.match(line)
+            if match:
                 if txt and file_name:
                     with open(os.path.join(output_folder, file_name), 'wb') as cf:
                         cf.write('\n'.join(txt).encode('utf-8'))
@@ -126,33 +128,23 @@ def merge_mp3(from_files, dest_file):
     os.system(cmd)
 
 
-def merge_chapter_mp3(output_files, mp3_folder):
+def merge_chapter_mp3(output_files, mp3_folder, mp3_prefix):
     dest_file = os.path.join(
-        mp3_folder, '%s_%s.mp3' % (output_files[0][1], output_files[-1][1]))
+        mp3_folder, '%s%s_%s.mp3' % (
+            mp3_prefix, output_files[0][1], output_files[-1][1]))
     from_files = [item[0] for item in output_files]
     merge_mp3(from_files, dest_file)
 
 
-def read_chapter_files(folder, name_pattern):
-    files_org = os.listdir(folder)
-    files_sort = [[filename, -1] for filename in files_org]
-    for i in range(len(files_org)):
-        result = name_pattern.match(files_org[i])
-        if result:
-            files_sort[i][1] = int(result.group(2))
-
-    files_sort.sort(key=lambda item: item[-1])
-    return files_sort
-
-
 def convert_chapters(
-        chapters, token, txt_folder, mp3_folder,
+        chapters, token, txt_folder, mp3_folder, mp3_prefix,
         chapters_per_file=20, chapter_start_index=1, chapter_end_index=None,
         speed=5, volume=5, person=0):
     output_files = []
     if not chapter_end_index:
         chapter_end_index = 2 ** 32
-    for filename, index in chapters:
+    for i, filename in enumerate(chapters):
+        index = i + 1
         if index >= chapter_start_index and index <= chapter_end_index:
             txt_filename = os.path.join(txt_folder, filename)
             with open(txt_filename, 'rb') as f:
@@ -172,11 +164,11 @@ def convert_chapters(
             merge_mp3(small_mp3s, chapter_mp3)
             output_files.append((chapter_mp3, index))
             if len(output_files) >= chapters_per_file:
-                merge_chapter_mp3(output_files, mp3_folder)
+                merge_chapter_mp3(output_files, mp3_folder, mp3_prefix)
                 output_files = []
 
     if len(output_files) > 0:
-        merge_chapter_mp3(output_files, mp3_folder)
+        merge_chapter_mp3(output_files, mp3_folder, mp3_prefix)
 
 
 def get_arguments():
@@ -192,6 +184,7 @@ def get_arguments():
     parser.add_argument('--volume', help='voice volume', type=int, default=5)
     parser.add_argument('--person', help='person style', type=int, choices=[0, 1, 2, 3, 4])
     parser.add_argument('--encoding', help='text encoding', default='gbk')
+    parser.add_argument('--mp3prefix', help='filename prefix of output mp3s', default='tts')
 
     args = parser.parse_args()
     return args
@@ -217,11 +210,12 @@ if __name__ == '__main__':
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
-    split_chapters(
+    chapters = split_chapters(
         args.book, output_folder_txt,
         chapter_pattern, encoding=args.encoding)
-    chapters = read_chapter_files(output_folder_txt, chapter_pattern)
+
     convert_chapters(chapters, token, output_folder_txt,
                      args.output, chapters_per_file=args.chapters,
+                     mp3_prefix=args.mp3prefix,
                      chapter_start_index=args.start, chapter_end_index=args.end,
                      speed=args.speed, volume=args.volume, person=args.person)
