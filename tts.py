@@ -74,6 +74,10 @@ def split_chapters(file_orig, output_folder, chapter_pattern, encoding):
                 txt = [line + '。']
             else:
                 txt.append(line)
+        if txt and file_name:
+            with open(os.path.join(output_folder, file_name), 'wb') as cf:
+                cf.write('\n'.join(txt).encode('utf-8'))
+                output_files.append(file_name)
     return output_files
 
 
