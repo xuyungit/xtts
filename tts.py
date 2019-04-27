@@ -9,7 +9,11 @@ from urllib.parse import urlencode as urlencode
 
 
 # chapter_pattern = re.compile(r'^(第(\d+)章\s+.*)')
-chapter_pattern = re.compile(r'^((\d{3})、.*)')
+# chapter_pattern = re.compile(r'^((\d{3})、.*)')
+# chapter_pattern = re.compile(r'^(第(\d{3})回、.*)')
+# chapter_pattern = re.compile(r'^(第(\d{4})章\s+.*)')
+# chapter_pattern = re.compile(r'^(第.+章\s+.*)')
+chapter_pattern = re.compile(r'^(第\d+章\s+.*)')
 text_to_convert = 'bsxcs.txt'
 baidu_oauth_url = 'https://openapi.baidu.com/oauth/2.0/token?grant_type=client_credentials&client_id=%s&client_secret=%s&'
 baidu_tsn_url = 'http://tsn.baidu.com/text2audio'
@@ -68,6 +72,8 @@ def split_chapters(file_orig, output_folder, chapter_pattern, encoding):
             line = line.strip()
             match = chapter_pattern.match(line)
             if match:
+                if txt and not file_name:
+                    file_name = '引子.txt'
                 if txt and file_name:
                     with open(os.path.join(output_folder, file_name), 'wb') as cf:
                         cf.write('\n'.join(txt).encode('utf-8'))
@@ -93,7 +99,7 @@ def get_prev_sp(txt, end_pos):
 
 
 # txt is unicode
-def split_txt(txt, limit=1024):
+def split_txt(txt, limit=2000):
     txt = txt.strip()
     txt = txt.replace('\n', '')
     start_pos = 0
@@ -102,13 +108,9 @@ def split_txt(txt, limit=1024):
     while start_pos < len(txt):
         end_pos = len(txt)
         candidate = txt[start_pos: end_pos]
-        split = candidate.encode('utf-8')
-
-        # while len(split) > limit:
-        while len(candidate.encode('gbk')) > limit:   # 尝试使用gbk的编码来计算长度
+        while len(candidate) * 2 > limit:   # 尝试使用gbk的编码来计算长度
             end_pos = get_prev_sp(txt, end_pos)
             candidate = txt[start_pos: end_pos]
-            split = candidate.encode('utf-8')
 
         splits.append(candidate.encode('utf-8'))
         start_pos += len(candidate)
@@ -175,18 +177,19 @@ def convert_chapters(
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--book', help='text book to be convert', required=True)
-    parser.add_argument('--id', help='client id', required=True)
-    parser.add_argument('--secret', help='client secret', required=True)
-    parser.add_argument('--start', help='start chapter index', type=int, default=1)
-    parser.add_argument('--end', help='end chapter index', type=int, default=None)
-    parser.add_argument('--chapters', help='number of chapters per one mp3 file', type=int, default=5)
-    parser.add_argument('--output', help='output mp3 folder', default='mp3')
-    parser.add_argument('--speed', help='voice speed', type=int, default=5)
-    parser.add_argument('--volume', help='voice volume', type=int, default=5)
-    parser.add_argument('--person', help='person style', type=int, choices=[0, 1, 2, 3, 4])
-    parser.add_argument('--encoding', help='text encoding', default='gbk')
-    parser.add_argument('--mp3prefix', help='filename prefix of output mp3s', default='tts')
+    parser.add_argument('--book', help='待合成的小说文本文件名', required=True)
+    parser.add_argument('--id', help='你的百度API Key', required=True)
+    parser.add_argument('--secret', help='你的百度Secret Key', required=True)
+    parser.add_argument('--start', help='从小说的哪一章开始', type=int, default=1)
+    parser.add_argument('--end', help='到小说的哪一章停止', type=int, default=None)
+    parser.add_argument('--chapters', help='每个mp3文件包含几章', type=int, default=5)
+    parser.add_argument('--output', help='输出的mp3保存目录', default='mp3')
+    parser.add_argument('--speed', help='语速', type=int, default=5)
+    parser.add_argument('--volume', help='音量', type=int, default=5)
+    parser.add_argument('--person', help='人', type=int, choices=[0, 1, 2, 3, 4])
+    parser.add_argument('--encoding', help='输入文件的编码', default='gbk')
+    parser.add_argument('--mp3prefix', help='输出的mp3文件的前缀', default='tts')
+    parser.add_argument('--pattern', help='章节名称的正则（用来切分章节）', default=r'^(第\d+章\s+.*)')
 
     args = parser.parse_args()
     return args
@@ -212,9 +215,12 @@ if __name__ == '__main__':
     if not os.path.exists(args.output):
         os.mkdir(args.output)
 
+    chapter_pattern = re.compile(args.pattern)
+    print('Spliting chapters using encoding %s...' % args.encoding)
     chapters = split_chapters(
         args.book, output_folder_txt,
         chapter_pattern, encoding=args.encoding)
+    print('%s chapters splited' % len(chapters))
 
     convert_chapters(chapters, token, output_folder_txt,
                      args.output, chapters_per_file=args.chapters,
