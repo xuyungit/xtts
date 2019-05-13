@@ -17,7 +17,8 @@ chapter_pattern = re.compile(r'^(第\d+章\s+.*)')
 text_to_convert = 'bsxcs.txt'
 baidu_oauth_url = 'https://openapi.baidu.com/oauth/2.0/token?grant_type=client_credentials&client_id=%s&client_secret=%s&'
 baidu_tsn_url = 'http://tsn.baidu.com/text2audio'
-punctuations = u'[,;"!?…？。，：“”！ ]'
+punctuations = u'[,;"!?…？。，；：“”！ ]'
+sentence_sep = re.compile(r'[。！；;!?. ]')
 output_folder_txt = 'contents'
 output_folder_mp3 = 'mp3'
 
@@ -31,21 +32,70 @@ def get_token(client_id, client_secret):
         resp = json.loads(resp)
         return resp['access_token']
 
+def make_sentence_shorter(txt, start, stop):
+    # print(start, stop)
+    # print('-' * 100)
+    # print(txt[start:stop])
+    # print('^' * 100)
+    if stop - start > 200:
+        sentence = txt[start:stop]
+        sentence = sentence.replace(',', '.')
+        sentence = sentence.replace('，', '。')
+        txt = txt[:start] + sentence + txt[stop:]
+        # print(sentence)
+    return txt
+
+
+def handle_long_sentence(txt):
+    new_txt = txt.replace('……', '。')
+    if new_txt != txt:
+        return new_txt
+
+    sentence_start = 0
+    for i, char in enumerate(txt):
+        if char in '.;?!。；？！':
+            txt = make_sentence_shorter(txt, sentence_start, i)
+            sentence_start = i
+    txt = make_sentence_shorter(txt, sentence_start, i)
+    return txt
+
 
 def text2audio(txt, token, speed, volume, person, name):
-    txt = urllib.parse.quote_plus(urllib.parse.quote_plus(txt))
-    token = urllib.parse.quote_plus(urllib.parse.quote_plus(token))
-    content = "tex=%s&lan=zh&cuid=client01&ctp=1&tok=%s&spd=%s&vol=%s&per=%s" % (
-        txt, token, speed, volume, person)
-    encoded = content.encode('utf-8')
+    txt_org = txt
+    txt = urllib.parse.quote_plus(txt)
+    # txt = urllib.parse.quote_plus(urllib.parse.quote_plus(txt))
     failed_count = 0
     while failed_count < 3:
+        token = urllib.parse.quote_plus(urllib.parse.quote_plus(token))
+        content = "tex=%s&lan=zh&cuid=client01&ctp=1&tok=%s&spd=%s&vol=%s&per=%s" % (
+            txt, token, speed, volume, person)
+        encoded = content.encode('utf-8')
         try:
             request = req.Request(baidu_tsn_url, encoded)
             with req.urlopen(request, timeout=10) as f:
                 if f.status != 200:
                     print(
                         "failed to convert %s, server response code is %s", name, f.status)
+                    print('Response from server is %s\n%s' % (f.status, f.read()))
+                    exit(1)
+                if 'audio/mp3' != f.getheader('Content-Type'):
+                    ret = f.read().decode('utf-8')
+                    print("Something wrong with tts API call!")
+                    print('Response from server is %s' % ret)                    
+                    print('-' * 100)
+                    print(txt_org)
+                    print('-' * 100)
+                    ret_detail = json.loads(ret)
+                    # {"err_detail":"Invalid text length","err_msg":"tex param err","err_no":513,"err_subcode":234,"tts_logid":1024616872}
+                    # 单句过长
+                    if ret_detail['err_no'] == 513 and ret_detail['err_subcode'] == 234:
+                        txt_org = handle_long_sentence(txt_org)
+                        txt = txt_org
+                        txt = urllib.parse.quote_plus(txt)
+                        failed_count += 1
+                        continue
+
+                    exit(1)
                 with open(name, 'wb') as lf:
                     lf.write(f.read())
         except KeyboardInterrupt as e:
@@ -108,11 +158,11 @@ def split_txt(txt, limit=2000):
     while start_pos < len(txt):
         end_pos = len(txt)
         candidate = txt[start_pos: end_pos]
-        while len(candidate) * 2 > limit:   # 尝试使用gbk的编码来计算长度
+        while len(candidate) > limit:
             end_pos = get_prev_sp(txt, end_pos)
             candidate = txt[start_pos: end_pos]
 
-        splits.append(candidate.encode('utf-8'))
+        splits.append(candidate)
         start_pos += len(candidate)
         count += 1
         if count > 50:
@@ -206,7 +256,7 @@ if __name__ == '__main__':
         sys.exit(1)
     try:
         token = get_token(client_id, client_secret)
-    except urllib.error.HTTPError:
+    except:
         print("Invalid id or secret")
         sys.exit(1)
     if os.path.exists(args.output) and not os.path.isdir(args.output):
