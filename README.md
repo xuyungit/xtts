@@ -14,6 +14,6 @@ Convert Chinese Text novels to mp3 using Baidu AI API
 建议使用播客的客户端来播放生成的mp3，这样能记住播放的位置。特别推荐Overcast，upload功能简直是天作之合。安卓推荐Simple ABP。
 
 使用示例
-`python3 tts.py --book "dmwf.txt" --mp3prefix 大明武夫 --pattern "^第.*章\\s+.*" --chapters 16 --start 81 --id 你的API_KEY --secret 你的Secret_Key --speed 8 --person 0 --encoding utf8 --output mp3`
+`python3 tts.py --book "dmwf.txt" --mp3prefix 大明武夫 --pattern "^第.*章\\s+.*" --chapters 16 --start 0 --id 你的API_KEY --secret 你的Secret_Key --speed 8 --person 0 --encoding utf8 --output mp3`
 
 感谢百度云能够免费提供语音合成API。
