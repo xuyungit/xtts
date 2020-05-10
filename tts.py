@@ -113,7 +113,7 @@ def text2audio(txt, token, speed, volume, person, name):
 
 def split_chapters(file_orig, output_folder, chapter_pattern, encoding):
     with open(file_orig, 'rb') as f:
-        content = f.read().decode(encoding)
+        content = f.read().decode(encoding, errors='ignore')
         contents = content.split('\n')
         txt = []
         file_name = ''
@@ -236,10 +236,10 @@ def get_arguments():
     parser.add_argument('--output', help='输出的mp3保存目录', default='mp3')
     parser.add_argument('--speed', help='语速', type=int, default=5)
     parser.add_argument('--volume', help='音量', type=int, default=5)
-    parser.add_argument('--person', help='人', type=int, choices=[0, 1, 2, 3, 4, 5, 106, 110, 111, 103])
+    parser.add_argument('--person', help='人', type=int, choices=[0, 1, 2, 3, 4, 5, 106, 110, 111, 103], default=0)
     parser.add_argument('--encoding', help='输入文件的编码', default='gbk')
     parser.add_argument('--mp3prefix', help='输出的mp3文件的前缀', default='tts')
-    parser.add_argument('--pattern', help='章节名称的正则（用来切分章节）', default=r'^(第\d+章\s+.*)')
+    parser.add_argument('--pattern', help='章节名称的正则（用来切分章节）', default=r'^第.*章\s+.*')
 
     args = parser.parse_args()
     return args
@@ -262,10 +262,16 @@ if __name__ == '__main__':
     if os.path.exists(args.output) and not os.path.isdir(args.output):
         print('Invalid output folder')
         sys.exit(1)
+    if os.path.exists(output_folder_txt) and not os.path.isdir(output_folder_txt):
+        print('Invalid output folder')
+        sys.exit(1)
     if not os.path.exists(args.output):
         os.mkdir(args.output)
+    if not os.path.exists(output_folder_txt):
+        os.mkdir(output_folder_txt)
 
     chapter_pattern = re.compile(args.pattern)
+    print(args.pattern)
     print('Spliting chapters using encoding %s...' % args.encoding)
     chapters = split_chapters(
         args.book, output_folder_txt,
