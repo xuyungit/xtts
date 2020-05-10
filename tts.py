@@ -236,7 +236,7 @@ def get_arguments():
     parser.add_argument('--output', help='输出的mp3保存目录', default='mp3')
     parser.add_argument('--speed', help='语速', type=int, default=5)
     parser.add_argument('--volume', help='音量', type=int, default=5)
-    parser.add_argument('--person', help='人', type=int, choices=[0, 1, 2, 3, 4])
+    parser.add_argument('--person', help='人', type=int, choices=[0, 1, 2, 3, 4, 5, 106, 110, 111, 103])
     parser.add_argument('--encoding', help='输入文件的编码', default='gbk')
     parser.add_argument('--mp3prefix', help='输出的mp3文件的前缀', default='tts')
     parser.add_argument('--pattern', help='章节名称的正则（用来切分章节）', default=r'^(第\d+章\s+.*)')
