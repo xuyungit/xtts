@@ -6,7 +6,12 @@ import urllib
 import argparse
 import urllib.request as req
 from urllib.parse import urlencode as urlencode
-
+chardet_available = False
+try:
+    import chardet
+    chardet_available = True
+except ModuleNotFoundError:
+    pass
 
 # chapter_pattern = re.compile(r'^(第(\d+)章\s+.*)')
 # chapter_pattern = re.compile(r'^((\d{3})、.*)')
@@ -237,12 +242,30 @@ def get_arguments():
     parser.add_argument('--speed', help='语速', type=int, default=5)
     parser.add_argument('--volume', help='音量', type=int, default=5)
     parser.add_argument('--person', help='人', type=int, choices=[0, 1, 2, 3, 4, 5, 106, 110, 111, 103], default=0)
-    parser.add_argument('--encoding', help='输入文件的编码', default='gbk')
+    parser.add_argument('--encoding', help='可指定文件的编码', default='')
     parser.add_argument('--mp3prefix', help='输出的mp3文件的前缀', default='tts')
     parser.add_argument('--pattern', help='章节名称的正则（用来切分章节）', default=r'^第.*章\s+.*')
 
     args = parser.parse_args()
     return args
+
+
+def detect_code(txt_filename):
+    result = "ascii"
+    if not chardet_available:
+        return result
+    try:
+        with open(txt_filename, 'rb') as f:
+            txt_snippet = f.read(1024)
+        ret = chardet.detect(txt_snippet)
+        if ret and ret['confidence'] > 0.9:
+            result = ret['encoding']
+        else:
+            print('Cannot detect encoding with enough confidence')
+    except Except as e:
+        print('Something wrong with checking file encoding:', e)
+        pass
+    return result
 
 
 if __name__ == '__main__':
@@ -270,12 +293,22 @@ if __name__ == '__main__':
     if not os.path.exists(output_folder_txt):
         os.mkdir(output_folder_txt)
 
+    print(chardet_available)
+    if not args.encoding and chardet_available:
+        print("File encoding is not specified, now try to detect file encoding...")
+        encoding_detect = detect_code(args.book)
+        print("Detected encoding is", encoding_detect)
+    elif not args.encoding:
+        encoding_detect = 'gbk'
+        print("File encoding is not specified, use default 'gbk' encoding!")
+    else:
+        encoding_detect = args.encoding
     chapter_pattern = re.compile(args.pattern)
     print(args.pattern)
-    print('Spliting chapters using encoding %s...' % args.encoding)
+    print('Spliting chapters using encoding %s...' % encoding_detect)
     chapters = split_chapters(
         args.book, output_folder_txt,
-        chapter_pattern, encoding=args.encoding)
+        chapter_pattern, encoding=encoding_detect)
     print('%s chapters splited' % len(chapters))
 
     convert_chapters(chapters, token, output_folder_txt,
